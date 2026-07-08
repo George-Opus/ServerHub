@@ -28,12 +28,24 @@ export default function ServicesPage() {
   const [output, setOutput] = useState<string>("");
   const [query, setQuery] = useState("");
 
+  const [loadingServers, setLoadingServers] = useState(true);
+
   useEffect(() => {
-    Promise.all([api.listServers(token), api.serviceCatalog(token)]).then(([srv, cat]) => {
-      setServers(srv);
-      setCatalog(cat.catalog);
-      if (srv.length && serverId === null) setServerId(srv[0].id);
-    });
+    setLoadingServers(true);
+    api
+      .listServers(token)
+      .then((srv) => {
+        setServers(srv);
+        setServerId((cur) => cur ?? srv[0]?.id ?? null);
+      })
+      .catch((err) => setError(err instanceof ApiError ? err.message : "Impossible de charger les serveurs"))
+      .finally(() => setLoadingServers(false));
+
+    // Catalogue chargé indépendamment : une erreur ici ne doit pas bloquer la sélection de serveur.
+    api
+      .serviceCatalog(token)
+      .then((cat) => setCatalog(cat.catalog))
+      .catch(() => setCatalog([]));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
@@ -113,6 +125,7 @@ export default function ServicesPage() {
           <select
             className="input-field w-56 text-xs"
             value={serverId ?? ""}
+            disabled={loadingServers || servers.length === 0}
             onChange={(e) => {
               const id = Number(e.target.value);
               setServerId(id);
@@ -120,11 +133,17 @@ export default function ServicesPage() {
               setSelected(null);
             }}
           >
-            {servers.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name} — {s.ip_address}
-              </option>
-            ))}
+            {loadingServers ? (
+              <option value="">Chargement…</option>
+            ) : servers.length === 0 ? (
+              <option value="">Aucun serveur</option>
+            ) : (
+              servers.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name} — {s.ip_address}
+                </option>
+              ))
+            )}
           </select>
           <button
             type="button"
