@@ -4,5 +4,5 @@ metadata:
   name: serverhub-config
   namespace: serverhub
 data:
-  CORS_ORIGINS: "http://localhost:30300"
+  CORS_ORIGINS: "https://serverhub.georgeop.us,http://serverhub.georgeop.us,http://149.202.84.198"
   DATABASE_URL: "sqlite:///./data/serverhub.db"

@@ -15,15 +15,20 @@ web:
     pullPolicy: IfNotPresent
 
 config:
-  corsOrigins: "http://serverhub.georgeop.us,http://149.202.84.198"
+  corsOrigins: "https://serverhub.georgeop.us,http://serverhub.georgeop.us,http://149.202.84.198"
 
 ingress:
   enabled: true
   className: traefik
   host: "serverhub.georgeop.us"
   annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: web
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
     traefik.ingress.kubernetes.io/service.passhostheader: "true"
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  tls:
+    - secretName: serverhub-tls
+      hosts:
+        - serverhub.georgeop.us
 
 persistence:
   enabled: true
