@@ -1,0 +1,359 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 150 20% 97%;
+    --foreground: 150 25% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 150 25% 10%;
+    --muted: 150 14% 93%;
+    --muted-foreground: 150 8% 40%;
+    --border: 150 12% 86%;
+    --primary: 150 70% 36%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 150 14% 93%;
+    --accent-foreground: 150 25% 10%;
+    --destructive: 0 72% 48%;
+    --ring: 150 70% 36%;
+    --sidebar: 150 20% 98%;
+    --terminal-dock-height: 0px;
+  }
+
+  .dark {
+    --background: 150 18% 4%;
+    --foreground: 145 25% 82%;
+    --card: 150 16% 6%;
+    --card-foreground: 145 25% 82%;
+    --muted: 150 12% 11%;
+    --muted-foreground: 145 12% 48%;
+    --border: 150 14% 14%;
+    --primary: 145 80% 55%;
+    --primary-foreground: 150 30% 5%;
+    --accent: 150 14% 12%;
+    --accent-foreground: 145 30% 88%;
+    --destructive: 0 74% 58%;
+    --ring: 145 80% 55%;
+    --sidebar: 150 20% 3%;
+  }
+
+  html {
+    @apply antialiased;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-background text-foreground min-h-screen;
+  }
+
+  ::selection {
+    @apply bg-primary/25 text-foreground;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-card text-card-foreground border border-border/80 rounded-xl;
+  }
+
+  .card-hover {
+    @apply card transition-all duration-200 hover:border-border;
+  }
+
+  .glass,
+  .glass-hover {
+    @apply card-hover;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-all duration-150 hover:brightness-110 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-transparent bg-transparent px-3 py-2 text-sm font-medium text-muted-foreground transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-[0.98];
+  }
+
+  .btn-icon {
+    @apply inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-95;
+  }
+
+  .input-field {
+    @apply w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none transition-colors duration-150 focus:border-primary/50 focus:ring-1 focus:ring-primary/30;
+  }
+
+  .label {
+    @apply mb-1 block text-[11px] font-medium uppercase tracking-widest text-muted-foreground;
+  }
+
+  .rail-link {
+    @apply relative flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground;
+  }
+
+  .rail-link-active {
+    @apply bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary;
+  }
+
+  .console-row {
+    @apply border-b border-border/40 transition-colors duration-100 hover:bg-primary/5;
+  }
+
+  .term-btn {
+    @apply inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-primary;
+  }
+
+  .cursor-blink::after {
+    content: "";
+    display: inline-block;
+    width: 0.55em;
+    height: 1.05em;
+    margin-left: 2px;
+    vertical-align: text-bottom;
+    background: hsl(var(--primary));
+    animation: term-blink 1.05s steps(1) infinite;
+  }
+
+  .status-blink {
+    animation: term-node-blink 1.6s ease-in-out infinite;
+  }
+
+  .scroll-hidden {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .scroll-hidden::-webkit-scrollbar {
+    display: none;
+  }
+
+  .dot-grid {
+    background-image: radial-gradient(circle, hsl(var(--border)) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  .rack-frame {
+    box-shadow: inset 0 2px 16px hsl(0 0% 0% / 0.45);
+  }
+
+  .serverhub-logo-spin {
+    transform-origin: 24px 24px;
+    animation: serverhub-globe-spin 18s linear infinite;
+  }
+
+  .serverhub-logo-orbit {
+    transform-origin: 24px 24px;
+    animation: serverhub-orbit-tilt 12s ease-in-out infinite alternate;
+  }
+
+  .serverhub-logo-node {
+    animation: serverhub-node-pulse 2.4s ease-in-out infinite;
+  }
+
+  .serverhub-logo-node-delay {
+    animation-delay: 0.6s;
+  }
+
+  .serverhub-logo-node-delay-2 {
+    animation-delay: 1.2s;
+  }
+
+  .serverhub-logo-node-delay-3 {
+    animation-delay: 1.8s;
+  }
+
+  .serverhub-logo-link {
+    stroke-dasharray: 24;
+    animation: serverhub-link-flow 3s linear infinite;
+  }
+
+  .serverhub-logo-link-delay {
+    animation-delay: 1s;
+  }
+
+  .serverhub-logo-link-delay-2 {
+    animation-delay: 2s;
+  }
+
+  .network-globe-spin {
+    transform-origin: 200px 200px;
+    animation: serverhub-globe-spin 22s linear infinite;
+  }
+
+  .network-globe-line {
+    stroke-dasharray: 6 10;
+    animation: network-line-flow 2.8s linear infinite;
+  }
+
+  .network-globe-line-orbit {
+    stroke-dasharray: 2 6;
+    animation-duration: 2s;
+  }
+
+  .network-globe-node {
+    animation: network-node-pulse 2.6s ease-in-out infinite;
+  }
+
+  .network-globe-node-orbit {
+    animation: network-node-pulse 1.8s ease-in-out infinite;
+  }
+
+  .france-3d-logo-stage {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    perspective: 820px;
+  }
+
+  .france-3d-logo-float {
+    animation: france-3d-float 7s ease-in-out infinite;
+  }
+
+  .france-3d-logo-tilt {
+    transform-style: preserve-3d;
+    will-change: transform;
+    animation: france-3d-tilt 14s ease-in-out infinite;
+  }
+
+  .france-3d-logo-hero .france-3d-logo-stage {
+    perspective: 1100px;
+  }
+
+  .france-3d-logo-hero .france-3d-logo-float {
+    animation-duration: 5s;
+  }
+
+  .france-3d-logo-hero .france-3d-logo-tilt {
+    animation-duration: 10s;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .france-3d-logo-float,
+    .france-3d-logo-tilt {
+      animation: none;
+    }
+  }
+}
+
+@keyframes term-blink {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  50.01%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes term-node-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@keyframes serverhub-globe-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes serverhub-orbit-tilt {
+  from {
+    transform: rotate(-18deg);
+  }
+  to {
+    transform: rotate(18deg);
+  }
+}
+
+@keyframes serverhub-node-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.25);
+  }
+}
+
+@keyframes serverhub-link-flow {
+  from {
+    stroke-dashoffset: 24;
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 0.65;
+  }
+  to {
+    stroke-dashoffset: 0;
+    opacity: 0.25;
+  }
+}
+
+@keyframes network-line-flow {
+  from {
+    stroke-dashoffset: 16;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes network-node-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes france-3d-tilt {
+  0%,
+  100% {
+    transform: rotateX(22deg) rotateY(-16deg) translateZ(0);
+  }
+  33% {
+    transform: rotateX(26deg) rotateY(12deg) translateZ(6px);
+  }
+  66% {
+    transform: rotateX(20deg) rotateY(18deg) translateZ(2px);
+  }
+}
+
+@keyframes france-3d-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+.xterm {
+  padding: 10px 12px;
+  height: 100%;
+}
+
+.xterm-viewport {
+  border-radius: 0;
+}
+
+.xterm-screen {
+  height: 100%;
+}

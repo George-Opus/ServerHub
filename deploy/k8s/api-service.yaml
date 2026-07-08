@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: serverhub-api
+  namespace: serverhub
+  labels:
+    app: serverhub-api
+spec:
+  type: ClusterIP
+  selector:
+    app: serverhub-api
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000

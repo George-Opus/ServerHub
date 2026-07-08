@@ -1,0 +1,31 @@
+ServerHub a été déployé (release: {{ .Release.Name }}, namespace: {{ .Release.Namespace }}).
+
+Composants :
+  - API : {{ include "serverhub.api.fullname" . }} (port 8000)
+  - Web : {{ include "serverhub.web.fullname" . }} (port 3000)
+
+{{- if .Values.ingress.enabled }}
+
+Accès via l'Ingress :
+  {{- if .Values.ingress.host }}
+  http://{{ .Values.ingress.host }}
+  {{- else }}
+  http://<IP-du-cluster>/         (interface)
+  http://<IP-du-cluster>/api/docs (documentation API)
+  {{- end }}
+{{- else }}
+
+L'Ingress est désactivé. Exposez le service web via un port-forward :
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "serverhub.web.fullname" . }} 3000:3000
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "serverhub.api.fullname" . }} 8000:8000
+{{- end }}
+
+Vérifier le déploiement :
+  kubectl -n {{ .Release.Namespace }} get pods,svc,ingress
+
+{{- if not .Values.secrets.secretKey }}
+
+NOTE : SECRET_KEY et FERNET_KEY ont été générés automatiquement et sont
+conservés entre les `helm upgrade`. Pour les fixer, définissez
+secrets.secretKey / secrets.fernetKey dans vos values.
+{{- end }}

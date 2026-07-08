@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: serverhub-config
+  namespace: serverhub
+data:
+  CORS_ORIGINS: "http://localhost:30300"
+  DATABASE_URL: "sqlite:///./data/serverhub.db"

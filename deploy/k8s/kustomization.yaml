@@ -1,0 +1,14 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: serverhub
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - api-pvc.yaml
+  - api-deployment.yaml
+  - api-service.yaml
+  - web-deployment.yaml
+  - web-service.yaml
+  - ingress.yaml

@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: serverhub-api
+  namespace: serverhub
+  labels:
+    app: serverhub-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: serverhub-api
+  template:
+    metadata:
+      labels:
+        app: serverhub-api
+    spec:
+      containers:
+        - name: api
+          image: serverhub-api:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          env:
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: serverhub-secrets
+                  key: SECRET_KEY
+            - name: FERNET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: serverhub-secrets
+                  key: FERNET_KEY
+            - name: CORS_ORIGINS
+              valueFrom:
+                configMapKeyRef:
+                  name: serverhub-config
+                  key: CORS_ORIGINS
+            - name: DATABASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: serverhub-config
+                  key: DATABASE_URL
+          volumeMounts:
+            - name: data
+              mountPath: /app/data
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: serverhub-api-data

@@ -1,0 +1,30 @@
+# Exemple de surcharge pour le cluster k3s OVH (images importées localement, tag :local).
+# Usage : helm upgrade --install serverhub deploy/helm/serverhub \
+#           -n serverhub --create-namespace -f deploy/helm/serverhub/values-ovh.example.yaml
+
+api:
+  image:
+    repository: serverhub-api
+    tag: local
+    pullPolicy: IfNotPresent
+
+web:
+  image:
+    repository: serverhub-web
+    tag: local
+    pullPolicy: IfNotPresent
+
+config:
+  corsOrigins: "http://149.202.84.198"
+
+ingress:
+  enabled: true
+  className: traefik
+  host: ""
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+    traefik.ingress.kubernetes.io/service.passhostheader: "true"
+
+persistence:
+  enabled: true
+  size: 1Gi

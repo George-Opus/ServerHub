@@ -1,0 +1,71 @@
+# Valeurs par défaut du chart ServerHub.
+# Surchargez-les avec --set ou un fichier -f values-prod.yaml.
+
+nameOverride: ""
+fullnameOverride: ""
+
+# Secrets de registre privé (si vos images ne sont pas locales / publiques).
+imagePullSecrets: []
+# - name: mon-registry-secret
+
+api:
+  image:
+    repository: serverhub-api
+    tag: local
+    pullPolicy: IfNotPresent
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+web:
+  image:
+    repository: serverhub-web
+    tag: local
+    pullPolicy: IfNotPresent
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+config:
+  # Origines CORS autorisées (séparées par des virgules).
+  corsOrigins: "http://localhost"
+  databaseUrl: "sqlite:///./data/serverhub.db"
+  allowRegistration: false
+
+secrets:
+  # Laissez vide pour une génération automatique au premier déploiement.
+  # Les valeurs existantes sont préservées lors des `helm upgrade`.
+  secretKey: ""
+  fernetKey: ""
+
+persistence:
+  enabled: true
+  accessMode: ReadWriteOnce
+  size: 1Gi
+  # storageClass: "" -> classe par défaut du cluster
+  storageClass: ""
+
+ingress:
+  enabled: true
+  className: ""
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+    traefik.ingress.kubernetes.io/service.passhostheader: "true"
+  # host vide = catch-all (toutes les hôtes)
+  host: ""
+  apiPath: /api
+  webPath: /
+  tls: []
+  # - secretName: serverhub-tls
+  #   hosts:
+  #     - serverhub.example.com
