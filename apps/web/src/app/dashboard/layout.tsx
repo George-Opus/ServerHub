@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Building2, KeyRound, LayoutGrid, LogOut, TerminalSquare } from "lucide-react";
+import { Boxes, Building2, KeyRound, LayoutGrid, LogOut, TerminalSquare } from "lucide-react";
 import { ServerHubLogo } from "@/components/ServerHubLogo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { TerminalHost } from "@/components/terminal/TerminalHost";
@@ -15,6 +15,7 @@ import { clearToken, getToken } from "@/lib/auth";
 const NAV = [
   { href: "/dashboard", label: "Serveurs", icon: LayoutGrid },
   { href: "/dashboard/datacenters", label: "Datacenters", icon: Building2 },
+  { href: "/dashboard/services", label: "Services", icon: Boxes },
   { href: "/dashboard/credentials", label: "Identifiants", icon: KeyRound },
 ];
 

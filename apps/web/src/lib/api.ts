@@ -186,6 +186,44 @@ export type RegistrationStatus = {
   bootstrap: boolean;
 };
 
+export type ServiceItem = {
+  name: string;
+  unit: string;
+  active: string;
+  sub: string;
+  description: string;
+  type: string | null;
+  kind: string;
+  config_kind: string | null;
+  ports: number[];
+};
+
+export type ServiceDetail = {
+  name: string;
+  active: string;
+  enabled: string;
+  status: string;
+  type: string | null;
+  kind: string;
+  config_kind: string;
+  config: {
+    summary?: Record<string, unknown>;
+    files?: string[];
+    raw?: string;
+    editable_path?: string;
+    test_cmd?: string;
+  };
+};
+
+export type ServiceCatalogItem = {
+  id: string;
+  label: string;
+  kind: string;
+  description: string;
+  check: string;
+  install: string;
+};
+
 class ApiError extends Error {
   constructor(
     message: string,
@@ -398,6 +436,36 @@ export const api = {
     request<{ tool: string; target: string; command: string; output: string }>(
       "/api/tools/net",
       { method: "POST", body: JSON.stringify({ tool, target, record }) },
+      token,
+    ),
+
+  listServices: (token: string, serverId: number) =>
+    request<{ services: ServiceItem[]; total: number }>(`/api/servers/${serverId}/services`, {}, token),
+
+  getService: (token: string, serverId: number, name: string) =>
+    request<ServiceDetail>(`/api/servers/${serverId}/services/${encodeURIComponent(name)}`, {}, token),
+
+  serviceAction: (token: string, serverId: number, name: string, action: "start" | "stop" | "restart" | "reload") =>
+    request<{ name: string; action: string; active: string; output: string }>(
+      `/api/servers/${serverId}/services/${encodeURIComponent(name)}/action`,
+      { method: "POST", body: JSON.stringify({ action }) },
+      token,
+    ),
+
+  deployServiceConfig: (token: string, serverId: number, name: string, path: string, content: string) =>
+    request<{ name: string; path: string; test_output: string; reload_output: string; active: string }>(
+      `/api/servers/${serverId}/services/${encodeURIComponent(name)}/config`,
+      { method: "POST", body: JSON.stringify({ path, content }) },
+      token,
+    ),
+
+  serviceCatalog: (token: string) =>
+    request<{ catalog: ServiceCatalogItem[] }>("/api/servers/service-catalog", {}, token),
+
+  installService: (token: string, serverId: number, serviceId: string) =>
+    request<{ id: string; already_installed: boolean; output: string }>(
+      `/api/servers/${serverId}/services/install`,
+      { method: "POST", body: JSON.stringify({ service_id: serviceId }) },
       token,
     ),
 

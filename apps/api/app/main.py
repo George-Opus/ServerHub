@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.database import init_db
-from app.routers import auth, credentials, datacenters, servers, terminal, tools
+from app.routers import auth, credentials, datacenters, servers, services, terminal, tools
 
 
 @asynccontextmanager
@@ -36,6 +36,7 @@ app.include_router(auth.router)
 app.include_router(credentials.router)
 app.include_router(datacenters.router)
 app.include_router(servers.router)
+app.include_router(services.router)
 app.include_router(terminal.router)
 app.include_router(tools.router)
 
