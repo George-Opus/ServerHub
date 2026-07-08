@@ -10,9 +10,9 @@ imagePullSecrets: []
 
 api:
   image:
-    repository: serverhub-api
-    tag: local
-    pullPolicy: IfNotPresent
+    repository: georgeopus/serverhub
+    tag: api
+    pullPolicy: Always
   replicas: 1
   resources:
     requests:
@@ -24,9 +24,9 @@ api:
 
 web:
   image:
-    repository: serverhub-web
-    tag: local
-    pullPolicy: IfNotPresent
+    repository: georgeopus/serverhub
+    tag: web
+    pullPolicy: Always
   replicas: 1
   resources:
     requests:

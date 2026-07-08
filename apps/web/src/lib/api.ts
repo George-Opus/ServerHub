@@ -1,4 +1,6 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+// Vide par défaut = appels API en relatif (même origine, ex. via l'ingress `/api`).
+// Définissez NEXT_PUBLIC_API_URL uniquement si l'API est sur une autre origine (dev, etc.).
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
 export type User = {
   id: number;

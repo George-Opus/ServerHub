@@ -2,7 +2,9 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-ARG NEXT_PUBLIC_API_URL=http://localhost:8000
+# Vide par défaut : le frontend appelle l'API en relatif (même origine).
+# Surchargez uniquement pour un déploiement où l'API est sur une autre origine.
+ARG NEXT_PUBLIC_API_URL=
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
 COPY package.json ./

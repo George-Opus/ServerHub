@@ -22,7 +22,8 @@ kubectl get nodes
 Write-Host "==> Building images"
 Push-Location $ProjectRoot
 docker build -t serverhub-api:local ./apps/api
-docker build -t serverhub-web:local --build-arg "NEXT_PUBLIC_API_URL=$PublicUrl" ./apps/web
+# Web sans URL figée : appels API en relatif (servis par l'ingress sur /api)
+docker build -t serverhub-web:local ./apps/web
 Pop-Location
 
 $apiTar = Join-Path $env:TEMP "serverhub-api.tar"

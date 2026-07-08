@@ -83,14 +83,18 @@ docker compose up --build
 
 ## Déploiement Kubernetes avec Helm (recommandé)
 
-Le chart se trouve dans [`deploy/helm/serverhub`](deploy/helm/serverhub).
+Le chart se trouve dans [`deploy/helm/serverhub`](deploy/helm/serverhub). Les images
+publiques sont disponibles sur Docker Hub (aucune configuration figée dans l'image) :
+
+- `georgeopus/serverhub:api`
+- `georgeopus/serverhub:web`
+
+> Le frontend appelle l'API en **relatif** (via l'ingress `/api`) : l'image web
+> fonctionne derrière n'importe quel hôte, sans rebuild. Il n'est donc pas
+> nécessaire de figer `NEXT_PUBLIC_API_URL` au build.
 
 ```bash
-# 1. Construire et pousser les images (ou les importer dans le nœud k3s)
-docker build -t serverhub-api:local ./apps/api
-docker build -t serverhub-web:local --build-arg NEXT_PUBLIC_API_URL=http://mon-hote ./apps/web
-
-# 2. Installer / mettre à jour la release
+# Installation clé en main (images tirées de Docker Hub)
 helm upgrade --install serverhub deploy/helm/serverhub \
   --namespace serverhub --create-namespace \
   --set config.corsOrigins=http://mon-hote
@@ -148,7 +152,7 @@ Le script PowerShell construit les images, les importe dans le nœud k3s et appl
 
 | Variable | Description |
 |----------|-------------|
-| `NEXT_PUBLIC_API_URL` | URL publique de l'API (injectée au **build**) |
+| `NEXT_PUBLIC_API_URL` | Vide par défaut → appels API en **relatif** (même origine, via l'ingress `/api`). À définir uniquement quand l'API est sur une autre origine (ex. dev : `http://localhost:8000`). |
 
 Générer une clé Fernet valide :
 
