@@ -8,6 +8,24 @@ metadata:
     traefik.ingress.kubernetes.io/service.passhostheader: "true"
 spec:
   rules:
+    - host: serverhub.georgeop.us
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: serverhub-api
+                port:
+                  number: 8000
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: serverhub-web
+                port:
+                  number: 3000
+    # Accès direct par IP conservé en secours (le temps de la propagation DNS)
     - http:
         paths:
           - path: /api
