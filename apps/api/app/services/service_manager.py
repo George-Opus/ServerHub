@@ -135,9 +135,10 @@ async def _listening_ports(conn: asyncssh.SSHClientConnection, sudo: str) -> dic
 
 async def discover_services(server: Server) -> dict:
     async with _session(server) as (conn, sudo):
+        # --all : inclut aussi les services arrêtés / échoués (pas seulement running)
         raw = await _run(
             conn,
-            "systemctl list-units --type=service --state=running --no-pager --no-legend --plain 2>/dev/null",
+            "systemctl list-units --type=service --all --no-pager --no-legend --plain 2>/dev/null",
         )
         ports_by_proc = await _listening_ports(conn, sudo)
 
@@ -147,11 +148,20 @@ async def discover_services(server: Server) -> dict:
             if len(parts) < 4:
                 continue
             unit = parts[0]
+            load = parts[1]
             active = parts[2]
             sub = parts[3]
             description = parts[4] if len(parts) > 4 else ""
+            # On ignore les unités non chargées (not-found / masked)
+            if load != "loaded":
+                continue
             name = _base_name(unit)
             if _is_default(name):
+                continue
+            # On masque le bruit inactif inconnu ; on garde tout ce qui est connu,
+            # actif, en échec, ou activable.
+            known_here = _match_known(name)
+            if known_here is None and active == "inactive" and sub in ("dead", "exited"):
                 continue
             known = _match_known(name)
             # ports : cherche un process correspondant
@@ -255,16 +265,44 @@ async def _config_haproxy(conn, sudo: str) -> dict:
 
 
 async def _config_docker(conn, sudo: str) -> dict:
+    # -a : inclut les conteneurs arrêtés pour pouvoir les (re)démarrer
     ps = await _run(
         conn,
-        f'{sudo}docker ps --format "{{{{.Names}}}}\t{{{{.Image}}}}\t{{{{.Ports}}}}\t{{{{.Status}}}}" 2>/dev/null',
+        f'{sudo}docker ps -a --format "{{{{.Names}}}}\t{{{{.Image}}}}\t{{{{.State}}}}\t{{{{.Status}}}}\t{{{{.Ports}}}}" 2>/dev/null',
     )
     containers = []
     for line in ps.splitlines():
         cols = line.split("\t")
         if len(cols) >= 4:
-            containers.append({"name": cols[0], "image": cols[1], "ports": cols[2], "status": cols[3]})
-    return {"summary": {"containers": containers}, "files": ["/etc/docker/daemon.json"], "raw": ps[:20000]}
+            containers.append(
+                {
+                    "name": cols[0],
+                    "image": cols[1],
+                    "state": cols[2],
+                    "status": cols[3],
+                    "ports": cols[4] if len(cols) > 4 else "",
+                }
+            )
+    return {"containers": containers, "files": ["/etc/docker/daemon.json"], "raw": ps[:20000]}
+
+
+CONTAINER_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$")
+CONTAINER_ACTIONS = {"start", "stop", "restart"}
+
+
+async def run_container_action(server: Server, container: str, action: str) -> dict:
+    container = (container or "").strip()
+    if not CONTAINER_NAME_RE.match(container):
+        raise ServiceError("Nom de conteneur invalide.")
+    if action not in CONTAINER_ACTIONS:
+        raise ServiceError("Action conteneur non autorisée.")
+    async with _session(server) as (conn, sudo):
+        out = await _run(conn, f"{sudo}docker {action} {container} 2>&1", timeout=60)
+        state = await _run(
+            conn,
+            f'{sudo}docker inspect -f "{{{{.State.Status}}}}" {container} 2>/dev/null',
+        )
+        return {"container": container, "action": action, "state": state, "output": out or "(ok)"}
 
 
 async def _config_apache(conn, sudo: str) -> dict:

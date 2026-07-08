@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Boxes, Download, Play, RefreshCw, RotateCw, Square, Search } from "lucide-react";
+import { Boxes, Download, Play, RefreshCw, RotateCw, Square } from "lucide-react";
 import {
   api,
   ApiError,
+  type DockerContainer,
   type ServiceCatalogItem,
   type ServiceDetail,
   type ServiceItem,
@@ -14,21 +15,33 @@ import { getToken } from "@/lib/auth";
 
 type ActionKind = "start" | "stop" | "restart" | "reload";
 
+function stateDot(active: string, sub: string): string {
+  if (sub === "running" || active === "active") return "bg-primary";
+  if (active === "failed" || sub === "failed") return "bg-destructive";
+  return "bg-muted-foreground";
+}
+
+function fmtDate(iso: string | null): string {
+  if (!iso) return "jamais scanné";
+  return "dernier scan : " + new Date(iso).toLocaleString(undefined);
+}
+
 export default function ServicesPage() {
   const token = getToken()!;
   const [servers, setServers] = useState<Server[]>([]);
   const [serverId, setServerId] = useState<number | null>(null);
+  const [loadingServers, setLoadingServers] = useState(true);
   const [services, setServices] = useState<ServiceItem[]>([]);
+  const [scannedAt, setScannedAt] = useState<string | null>(null);
+  const [everScanned, setEverScanned] = useState(false);
   const [catalog, setCatalog] = useState<ServiceCatalogItem[]>([]);
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState("");
   const [selected, setSelected] = useState<ServiceDetail | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [busyAction, setBusyAction] = useState(false);
-  const [output, setOutput] = useState<string>("");
+  const [output, setOutput] = useState("");
   const [query, setQuery] = useState("");
-
-  const [loadingServers, setLoadingServers] = useState(true);
 
   useEffect(() => {
     setLoadingServers(true);
@@ -40,8 +53,6 @@ export default function ServicesPage() {
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : "Impossible de charger les serveurs"))
       .finally(() => setLoadingServers(false));
-
-    // Catalogue chargé indépendamment : une erreur ici ne doit pas bloquer la sélection de serveur.
     api
       .serviceCatalog(token)
       .then((cat) => setCatalog(cat.catalog))
@@ -49,17 +60,42 @@ export default function ServicesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  const scan = useCallback(
+  const loadCached = useCallback(
     async (id: number) => {
-      setScanning(true);
       setError("");
       setSelected(null);
       setOutput("");
       try {
         const res = await api.listServices(token, id);
         setServices(res.services);
+        setScannedAt(res.scanned_at);
+        setEverScanned(res.scanned);
       } catch (err) {
         setServices([]);
+        setEverScanned(false);
+        setError(err instanceof ApiError ? err.message : "Chargement impossible");
+      }
+    },
+    [token],
+  );
+
+  // Charge le dernier scan enregistré quand on change de serveur (sans SSH).
+  useEffect(() => {
+    if (serverId) loadCached(serverId);
+  }, [serverId, loadCached]);
+
+  const rescan = useCallback(
+    async (id: number) => {
+      setScanning(true);
+      setError("");
+      setSelected(null);
+      setOutput("");
+      try {
+        const res = await api.scanServices(token, id);
+        setServices(res.services);
+        setScannedAt(res.scanned_at);
+        setEverScanned(true);
+      } catch (err) {
         setError(err instanceof ApiError ? err.message : "Scan impossible");
       } finally {
         setScanning(false);
@@ -73,12 +109,20 @@ export default function ServicesPage() {
     setLoadingDetail(true);
     setOutput("");
     try {
-      const detail = await api.getService(token, serverId, name);
-      setSelected(detail);
+      setSelected(await api.getService(token, serverId, name));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Détail indisponible");
     } finally {
       setLoadingDetail(false);
+    }
+  };
+
+  const refreshDetail = async (name: string) => {
+    if (!serverId) return;
+    try {
+      setSelected(await api.getService(token, serverId, name));
+    } catch {
+      /* ignore */
     }
   };
 
@@ -89,10 +133,7 @@ export default function ServicesPage() {
     try {
       const res = await api.serviceAction(token, serverId, name, action);
       setOutput(`❯ systemctl ${action} ${name}\n${res.output}\n\n→ actif: ${res.active}`);
-      if (selected?.name === name) {
-        const detail = await api.getService(token, serverId, name);
-        setSelected(detail);
-      }
+      await refreshDetail(name);
     } catch (err) {
       setOutput(err instanceof ApiError ? err.message : "Action échouée");
     } finally {
@@ -117,21 +158,14 @@ export default function ServicesPage() {
           <h1 className="text-lg font-semibold tracking-tight text-foreground">
             <span className="text-primary">#</span> services
           </h1>
-          <span className="text-xs text-muted-foreground">
-            gestion des services distants (systemd)
-          </span>
+          <span className="text-xs text-muted-foreground">{fmtDate(scannedAt)}</span>
         </div>
         <div className="flex items-center gap-2">
           <select
             className="input-field w-56 text-xs"
             value={serverId ?? ""}
             disabled={loadingServers || servers.length === 0}
-            onChange={(e) => {
-              const id = Number(e.target.value);
-              setServerId(id);
-              setServices([]);
-              setSelected(null);
-            }}
+            onChange={(e) => setServerId(Number(e.target.value))}
           >
             {loadingServers ? (
               <option value="">Chargement…</option>
@@ -149,23 +183,22 @@ export default function ServicesPage() {
             type="button"
             className="btn-primary text-xs"
             disabled={!serverId || scanning}
-            onClick={() => serverId && scan(serverId)}
+            onClick={() => serverId && rescan(serverId)}
           >
-            <Search className={`h-3.5 w-3.5 ${scanning ? "animate-pulse" : ""}`} />
-            {scanning ? "Scan…" : "Scanner"}
+            <RefreshCw className={`h-3.5 w-3.5 ${scanning ? "animate-spin" : ""}`} />
+            {scanning ? "Scan…" : everScanned ? "Rescanner" : "Scanner"}
           </button>
         </div>
       </header>
 
-      {error && <p className="mb-3 text-xs text-destructive whitespace-pre-line">{error}</p>}
+      {error && <p className="mb-3 whitespace-pre-line text-xs text-destructive">{error}</p>}
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_1fr]">
-        {/* Colonne gauche : services découverts + catalogue */}
         <div className="space-y-5">
           <section className="rounded-md border border-border/60 bg-card">
             <div className="flex items-center justify-between border-b border-border/60 px-3 py-2">
               <span className="text-xs uppercase tracking-wider text-muted-foreground">
-                services actifs{services.length ? ` (${services.length})` : ""}
+                services{services.length ? ` (${services.length})` : ""}
               </span>
               {services.length > 0 && (
                 <input
@@ -182,7 +215,9 @@ export default function ServicesPage() {
               </p>
             ) : services.length === 0 ? (
               <p className="px-3 py-8 text-center text-xs text-muted-foreground">
-                Sélectionnez un serveur puis cliquez « Scanner ».
+                {everScanned
+                  ? "Aucun service détecté."
+                  : "Aucun scan enregistré — cliquez « Scanner »."}
               </p>
             ) : (
               <div className="divide-y divide-border/40">
@@ -195,17 +230,14 @@ export default function ServicesPage() {
                       selected?.name === svc.name ? "bg-primary/10" : ""
                     }`}
                   >
-                    <span
-                      className={`h-1.5 w-1.5 shrink-0 rounded-full ${
-                        svc.sub === "running" ? "bg-primary" : "bg-muted-foreground"
-                      }`}
-                    />
+                    <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${stateDot(svc.active, svc.sub)}`} />
                     <span className="min-w-0 flex-1">
                       <span className="font-medium text-foreground">{svc.name}</span>
                       {svc.description && (
                         <span className="ml-2 truncate text-muted-foreground/70">{svc.description}</span>
                       )}
                     </span>
+                    <span className="shrink-0 text-[10px] text-muted-foreground/70">{svc.sub}</span>
                     {svc.type && (
                       <span className="shrink-0 rounded bg-primary/15 px-1.5 py-0.5 text-[10px] text-primary">
                         {svc.type}
@@ -226,11 +258,10 @@ export default function ServicesPage() {
             catalog={catalog}
             token={token}
             serverId={serverId}
-            onInstalled={() => serverId && scan(serverId)}
+            onInstalled={() => serverId && rescan(serverId)}
           />
         </div>
 
-        {/* Colonne droite : détail du service sélectionné */}
         <div className="rounded-md border border-border/60 bg-card">
           {!selected ? (
             <div className="flex flex-col items-center justify-center px-3 py-16 text-center text-xs text-muted-foreground">
@@ -250,6 +281,7 @@ export default function ServicesPage() {
               token={token}
               serverId={serverId!}
               onDeployed={(o) => setOutput(o)}
+              onContainerActed={() => refreshDetail(selected.name)}
             />
           )}
         </div>
@@ -257,8 +289,8 @@ export default function ServicesPage() {
 
       {server && (
         <p className="mt-4 text-[10px] text-muted-foreground/60">
-          Cible : {server.ssh_username}@{server.ip_address}:{server.ssh_port} · les actions nécessitent
-          les droits adéquats (root ou sudo NOPASSWD).
+          Cible : {server.ssh_username}@{server.ip_address}:{server.ssh_port} · les actions nécessitent les
+          droits adéquats (root ou sudo NOPASSWD).
         </p>
       )}
     </>
@@ -273,6 +305,7 @@ function ServiceDetailPanel({
   token,
   serverId,
   onDeployed,
+  onContainerActed,
 }: {
   detail: ServiceDetail;
   busy: boolean;
@@ -281,18 +314,18 @@ function ServiceDetailPanel({
   token: string;
   serverId: number;
   onDeployed: (output: string) => void;
+  onContainerActed: () => void;
 }) {
   const summary = detail.config?.summary ?? {};
   const files = detail.config?.files ?? [];
   const editablePath = detail.config?.editable_path ?? "";
+  const containers = detail.config?.containers;
 
   return (
     <div className="divide-y divide-border/40">
       <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5">
         <div className="flex items-center gap-2">
-          <span
-            className={`h-2 w-2 rounded-full ${detail.active === "active" ? "bg-primary" : "bg-destructive"}`}
-          />
+          <span className={`h-2 w-2 rounded-full ${detail.active === "active" ? "bg-primary" : "bg-destructive"}`} />
           <span className="font-medium text-foreground">{detail.name}</span>
           {detail.type && (
             <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[10px] text-primary">{detail.type}</span>
@@ -308,6 +341,15 @@ function ServiceDetailPanel({
           <ActBtn icon={Square} label="stop" onClick={() => onAction("stop")} disabled={busy} />
         </div>
       </div>
+
+      {containers && (
+        <DockerContainers
+          containers={containers}
+          token={token}
+          serverId={serverId}
+          onActed={onContainerActed}
+        />
+      )}
 
       {Object.keys(summary).length > 0 && (
         <div className="px-3 py-2.5">
@@ -362,6 +404,72 @@ function ServiceDetailPanel({
           </pre>
         </div>
       )}
+    </div>
+  );
+}
+
+function DockerContainers({
+  containers,
+  token,
+  serverId,
+  onActed,
+}: {
+  containers: DockerContainer[];
+  token: string;
+  serverId: number;
+  onActed: () => void;
+}) {
+  const [busy, setBusy] = useState<string | null>(null);
+  const [msg, setMsg] = useState("");
+
+  const act = async (name: string, action: "start" | "stop" | "restart") => {
+    setBusy(name + action);
+    setMsg("");
+    try {
+      const res = await api.dockerContainerAction(token, serverId, name, action);
+      setMsg(`${name} → ${res.state}`);
+      onActed();
+    } catch (err) {
+      setMsg(err instanceof ApiError ? err.message : "Action conteneur échouée");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <div className="px-3 py-2.5">
+      <p className="mb-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">
+        conteneurs ({containers.length})
+      </p>
+      <div className="space-y-1">
+        {containers.map((c) => (
+          <div key={c.name} className="flex items-center gap-2 rounded border border-border/40 px-2 py-1.5">
+            <span
+              className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                c.state === "running" ? "bg-primary" : c.state === "exited" ? "bg-destructive" : "bg-muted-foreground"
+              }`}
+            />
+            <div className="min-w-0 flex-1">
+              <span className="font-mono text-[11px] font-medium text-foreground">{c.name}</span>
+              <span className="ml-2 truncate text-[10px] text-muted-foreground/70">{c.image}</span>
+              {c.ports && <span className="ml-2 font-mono text-[10px] text-muted-foreground/60">{c.ports}</span>}
+            </div>
+            <span className="shrink-0 text-[10px] text-muted-foreground">{c.status}</span>
+            <div className="flex shrink-0 items-center gap-0.5">
+              <button type="button" onClick={() => act(c.name, "start")} disabled={!!busy} className="term-btn" title="start">
+                <Play className="h-3 w-3" />
+              </button>
+              <button type="button" onClick={() => act(c.name, "restart")} disabled={!!busy} className="term-btn" title="restart">
+                <RotateCw className="h-3 w-3" />
+              </button>
+              <button type="button" onClick={() => act(c.name, "stop")} disabled={!!busy} className="term-btn hover:!text-destructive" title="stop">
+                <Square className="h-3 w-3" />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+      {msg && <p className="mt-1.5 font-mono text-[11px] text-primary">{msg}</p>}
     </div>
   );
 }

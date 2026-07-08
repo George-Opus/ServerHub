@@ -129,3 +129,18 @@ class Server(Base):
     owner = relationship("User")
     datacenter = relationship("Datacenter", back_populates="servers")
     rack = relationship("Rack", back_populates="servers")
+
+
+class ServiceScan(Base):
+    """Dernier résultat de scan des services d'un serveur (persisté)."""
+
+    __tablename__ = "service_scans"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    server_id: Mapped[int] = mapped_column(
+        ForeignKey("servers.id", ondelete="CASCADE"), unique=True, index=True
+    )
+    data: Mapped[str] = mapped_column(Text)  # JSON: {"services": [...], "total": n}
+    scanned_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )

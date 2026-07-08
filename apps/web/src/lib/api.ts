@@ -198,6 +198,21 @@ export type ServiceItem = {
   ports: number[];
 };
 
+export type ServiceScanResult = {
+  services: ServiceItem[];
+  total: number;
+  scanned_at: string | null;
+  scanned: boolean;
+};
+
+export type DockerContainer = {
+  name: string;
+  image: string;
+  state: string;
+  status: string;
+  ports: string;
+};
+
 export type ServiceDetail = {
   name: string;
   active: string;
@@ -212,6 +227,7 @@ export type ServiceDetail = {
     raw?: string;
     editable_path?: string;
     test_cmd?: string;
+    containers?: DockerContainer[];
   };
 };
 
@@ -440,10 +456,25 @@ export const api = {
     ),
 
   listServices: (token: string, serverId: number) =>
-    request<{ services: ServiceItem[]; total: number }>(`/api/servers/${serverId}/services`, {}, token),
+    request<ServiceScanResult>(`/api/servers/${serverId}/services`, {}, token),
+
+  scanServices: (token: string, serverId: number) =>
+    request<ServiceScanResult>(`/api/servers/${serverId}/services/scan`, { method: "POST" }, token),
 
   getService: (token: string, serverId: number, name: string) =>
     request<ServiceDetail>(`/api/servers/${serverId}/services/${encodeURIComponent(name)}`, {}, token),
+
+  dockerContainerAction: (
+    token: string,
+    serverId: number,
+    container: string,
+    action: "start" | "stop" | "restart",
+  ) =>
+    request<{ container: string; action: string; state: string; output: string }>(
+      `/api/servers/${serverId}/services/docker/container`,
+      { method: "POST", body: JSON.stringify({ container, action }) },
+      token,
+    ),
 
   serviceAction: (token: string, serverId: number, name: string, action: "start" | "stop" | "restart" | "reload") =>
     request<{ name: string; action: string; active: string; output: string }>(
