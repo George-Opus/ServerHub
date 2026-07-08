@@ -1,12 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Boxes, Download, Play, RefreshCw, RotateCw, Square } from "lucide-react";
 import {
   api,
   ApiError,
   type DockerContainer,
-  type ServiceCatalogItem,
   type ServiceDetail,
   type ServiceItem,
   type Server,
@@ -27,14 +27,22 @@ function fmtDate(iso: string | null): string {
 }
 
 export default function ServicesPage() {
+  return (
+    <Suspense fallback={<div className="py-16 text-center text-xs text-muted-foreground"><span className="cursor-blink">chargement</span></div>}>
+      <ServicesInner />
+    </Suspense>
+  );
+}
+
+function ServicesInner() {
   const token = getToken()!;
+  const searchParams = useSearchParams();
   const [servers, setServers] = useState<Server[]>([]);
   const [serverId, setServerId] = useState<number | null>(null);
   const [loadingServers, setLoadingServers] = useState(true);
   const [services, setServices] = useState<ServiceItem[]>([]);
   const [scannedAt, setScannedAt] = useState<string | null>(null);
   const [everScanned, setEverScanned] = useState(false);
-  const [catalog, setCatalog] = useState<ServiceCatalogItem[]>([]);
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState("");
   const [selected, setSelected] = useState<ServiceDetail | null>(null);
@@ -45,18 +53,16 @@ export default function ServicesPage() {
 
   useEffect(() => {
     setLoadingServers(true);
+    const param = searchParams.get("server");
+    const wanted = param ? Number(param) : null;
     api
       .listServers(token)
       .then((srv) => {
         setServers(srv);
-        setServerId((cur) => cur ?? srv[0]?.id ?? null);
+        setServerId((cur) => cur ?? (wanted && srv.some((s) => s.id === wanted) ? wanted : srv[0]?.id ?? null));
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : "Impossible de charger les serveurs"))
       .finally(() => setLoadingServers(false));
-    api
-      .serviceCatalog(token)
-      .then((cat) => setCatalog(cat.catalog))
-      .catch(() => setCatalog([]));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
@@ -253,13 +259,6 @@ export default function ServicesPage() {
               </div>
             )}
           </section>
-
-          <ServiceLibrary
-            catalog={catalog}
-            token={token}
-            serverId={serverId}
-            onInstalled={() => serverId && rescan(serverId)}
-          />
         </div>
 
         <div className="rounded-md border border-border/60 bg-card">
@@ -383,17 +382,6 @@ function ServiceDetailPanel({
           testCmd={detail.config?.test_cmd}
           onDeployed={onDeployed}
         />
-      )}
-
-      {detail.status && (
-        <details className="px-3 py-2.5">
-          <summary className="cursor-pointer text-[10px] uppercase tracking-wider text-muted-foreground">
-            statut systemd
-          </summary>
-          <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap font-mono text-[11px] text-muted-foreground scroll-hidden">
-            {detail.status}
-          </pre>
-        </details>
       )}
 
       {output && (
@@ -607,73 +595,3 @@ function ConfigDeployer({
   );
 }
 
-function ServiceLibrary({
-  catalog,
-  token,
-  serverId,
-  onInstalled,
-}: {
-  catalog: ServiceCatalogItem[];
-  token: string;
-  serverId: number | null;
-  onInstalled: () => void;
-}) {
-  const [busyId, setBusyId] = useState<string | null>(null);
-  const [result, setResult] = useState<{ id: string; text: string } | null>(null);
-
-  const install = async (id: string) => {
-    if (!serverId) return;
-    if (!confirm(`Installer « ${id} » sur ce serveur ?`)) return;
-    setBusyId(id);
-    setResult(null);
-    try {
-      const res = await api.installService(token, serverId, id);
-      setResult({ id, text: res.already_installed ? "Déjà installé." : res.output });
-      onInstalled();
-    } catch (err) {
-      setResult({ id, text: err instanceof ApiError ? err.message : "Installation échouée" });
-    } finally {
-      setBusyId(null);
-    }
-  };
-
-  return (
-    <section className="rounded-md border border-border/60 bg-card">
-      <div className="border-b border-border/60 px-3 py-2">
-        <span className="text-xs uppercase tracking-wider text-muted-foreground">
-          bibliothèque · installer un service
-        </span>
-      </div>
-      <div className="divide-y divide-border/40">
-        {catalog.map((item) => (
-          <div key={item.id} className="px-3 py-2">
-            <div className="flex items-center justify-between gap-2">
-              <div className="min-w-0">
-                <span className="text-xs font-medium text-foreground">{item.label}</span>
-                <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                  {item.kind}
-                </span>
-                <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{item.description}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => install(item.id)}
-                disabled={!serverId || busyId === item.id}
-                className="term-btn shrink-0 !text-primary hover:bg-primary/10"
-                title={serverId ? "Installer" : "Sélectionnez un serveur"}
-              >
-                <Download className={`h-3 w-3 ${busyId === item.id ? "animate-pulse" : ""}`} />
-                {busyId === item.id ? "install…" : "installer"}
-              </button>
-            </div>
-            {result?.id === item.id && (
-              <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap font-mono text-[11px] text-primary scroll-hidden">
-                {result.text}
-              </pre>
-            )}
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}

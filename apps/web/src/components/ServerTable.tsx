@@ -1,6 +1,7 @@
 "use client";
 
-import { RefreshCw, TerminalSquare, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { Boxes, RefreshCw, TerminalSquare, Trash2 } from "lucide-react";
 import { EditServerModal } from "./EditServerModal";
 import type { Server as ServerType } from "@/lib/api";
 
@@ -101,6 +102,14 @@ export function ServerTable({
                     >
                       <TerminalSquare className="h-3 w-3" /> ssh
                     </button>
+                    <Link
+                      href={`/dashboard/services?server=${server.id}`}
+                      className="term-btn"
+                      title="Gérer les services de ce serveur"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Boxes className="h-3 w-3" /> svc
+                    </Link>
                     <button
                       type="button"
                       onClick={() => onSync(server.id)}
